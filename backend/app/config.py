@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # but the transcribe endpoint will explain that it isn't set up.
     groq_api_key: str = ""
     stt_model: str = "whisper-large-v3-turbo"
+    llm_model: str = "openai/gpt-oss-120b"  # scores answers and writes feedback
 
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env")
 
