@@ -12,12 +12,16 @@ export class ApiError extends Error {
 }
 
 export async function api(path, { method = 'GET', body } = {}) {
+  // FormData = file uploads (like audio). The browser sets the right headers itself.
+  // Anything else is sent as JSON.
+  const isUpload = body instanceof FormData
+
   let response
   try {
     response = await fetch(`/api${path}`, {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
+      headers: body && !isUpload ? { 'Content-Type': 'application/json' } : undefined,
+      body: isUpload ? body : body ? JSON.stringify(body) : undefined,
     })
   } catch {
     // fetch only throws when the request never reached the server

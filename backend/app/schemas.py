@@ -37,3 +37,17 @@ class UserOut(BaseModel):
     name: str
     email: EmailStr
     created_at: datetime
+
+
+class TranscriptWord(BaseModel):
+    """One spoken word with when it started and ended (in seconds)."""
+    word: str
+    start: float
+    end: float
+
+
+class TranscriptOut(BaseModel):
+    """What the transcribe endpoint sends back."""
+    transcript: str
+    duration_seconds: float
+    words: list[TranscriptWord]

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import models  # noqa: F401  (imported so SQLAlchemy knows about our tables)
 from app.config import settings
 from app.database import Base, engine
-from app.routers import auth, questions
+from app.routers import answers, auth, questions
 
 # Create any missing tables. (Later we'll switch to Alembic migrations.)
 Base.metadata.create_all(bind=engine)
@@ -26,6 +26,7 @@ app.add_middleware(
 # Every route lives under /api, e.g. /api/auth/login, /api/question
 app.include_router(auth.router, prefix="/api")
 app.include_router(questions.router, prefix="/api")
+app.include_router(answers.router, prefix="/api")
 
 
 @app.get("/api/health")

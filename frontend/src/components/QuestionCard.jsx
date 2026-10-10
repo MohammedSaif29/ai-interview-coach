@@ -1,38 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { api } from '../lib/api.js'
+import { useQuestion } from '../hooks/useQuestion.js'
 import { Button } from './ui/Button.jsx'
 import { Alert } from './ui/Alert.jsx'
 
-// Shows an interview question from the backend, with a "Next question" button.
+// Shows an interview question with a "Next question" button (used on the landing page).
 export default function QuestionCard() {
-  const [question, setQuestion] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  // useRef: remembers a value between renders without causing a re-render
-  const current = useRef(null)
-
-  const loadQuestion = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    try {
-      // The backend picks randomly, so it can repeat. Try a few times for a new one.
-      let data
-      for (let attempt = 0; attempt < 3; attempt++) {
-        data = await api('/question')
-        if (data.question !== current.current) break
-      }
-      current.current = data.question
-      setQuestion(data.question)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadQuestion()
-  }, [loadQuestion])
+  const { question, loading, error, next } = useQuestion()
 
   return (
     <div>
@@ -52,7 +24,7 @@ export default function QuestionCard() {
 
       {error && <Alert className="mt-4">{error}</Alert>}
 
-      <Button onClick={loadQuestion} disabled={loading} className="mt-6">
+      <Button onClick={next} disabled={loading} className="mt-6">
         {loading && question ? 'Getting a question…' : 'Next question'}
       </Button>
     </div>

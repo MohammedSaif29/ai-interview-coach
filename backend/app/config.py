@@ -22,6 +22,11 @@ class Settings(BaseSettings):
 
     frontend_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
+    # Speech-to-text (Groq's hosted Whisper). Optional: the app still starts without it,
+    # but the transcribe endpoint will explain that it isn't set up.
+    groq_api_key: str = ""
+    stt_model: str = "whisper-large-v3-turbo"
+
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env")
 
 
