@@ -9,6 +9,8 @@ questions = [
     "Why should we hire you?",
     "Explain a project you worked on.",
     "Where do you see yourself in 5 years?"
+    "how do you handle stress and pressure?",
+    "What is your greatest achievement?",
 ]
 
 @app.get("/")
@@ -18,3 +20,6 @@ def home():
 @app.get("/question")
 def get_question():
     return {"question": random.choice(questions)}
+@app.get("/tip")
+def get_tip():
+    return {"tip": random.choice(tips)}
