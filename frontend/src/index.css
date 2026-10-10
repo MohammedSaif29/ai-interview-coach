@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+/*
+  DESIGN TOKENS: the colours and fonts used everywhere.
+  Defining them once here means `bg-brand`, `text-ink`, `font-serif` etc.
+  all come from one place. Change a value here and the whole site updates.
+*/
+@theme {
+  --color-paper: #f4f6f8;      /* page background */
+  --color-ink: #16213a;        /* main text */
+  --color-muted: #5b6478;      /* secondary text */
+  --color-line: #dde2ea;       /* borders */
+  --color-brand: #0f6b5c;      /* buttons, links, focus */
+  --color-brand-dark: #0b5247; /* button hover */
+  --color-brand-soft: #e3f0ed; /* light brand background */
+  --color-mark: #c2415a;       /* ONLY for flagging filler words and errors */
+
+  --color-night: #0d1526;      /* dark "recording booth" sections */
+  --color-glow: #3ee0bf;       /* the listening glow, used on dark backgrounds */
+  --color-mark-light: #ff8fa6; /* filler-word mark on dark backgrounds */
+
+  --font-sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Newsreader", ui-serif, Georgia, serif;
+
+  /* ANIMATIONS: usable as classes, e.g. className="animate-drift" */
+  --animate-drift: drift 22s ease-in-out infinite alternate;
+  --animate-breathe: breathe 3.2s ease-in-out infinite;
+  --animate-fade-up: fade-up 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+
+  @keyframes drift {
+    from { transform: translate(0, 0) scale(1); }
+    to { transform: translate(40px, -30px) scale(1.15); }
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(0.96); opacity: 0.7; }
+    50% { transform: scale(1.04); opacity: 1; }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+/* Waveform bars bounce between short and tall */
+@keyframes wave {
+  from { transform: scaleY(0.3); }
+  to { transform: scaleY(1); }
+}
+
+@layer base {
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+  }
+
+  /* Visible focus ring for keyboard users on every interactive element */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand;
+  }
+}
+
+/* Filler words in transcripts: underlined like a spell-check mark.
+   --filler can be changed per section (lighter on dark backgrounds). */
+.filler {
+  color: var(--filler, var(--color-mark));
+  text-decoration: underline wavy var(--filler, var(--color-mark));
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+
+/* ACCESSIBILITY: people who turn on "Reduce motion" in their system settings
+   get a calm version: animations finish instantly instead of moving. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
