@@ -23,6 +23,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def security_headers(request, call_next):
+    """MIDDLEWARE: runs on every request. These headers tell browsers to be stricter."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")  # don't guess file types
+    response.headers.setdefault("X-Frame-Options", "DENY")            # can't be embedded in other sites
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    return response
+
+
 # Every route lives under /api, e.g. /api/auth/login, /api/question
 app.include_router(auth.router, prefix="/api")
 app.include_router(questions.router, prefix="/api")

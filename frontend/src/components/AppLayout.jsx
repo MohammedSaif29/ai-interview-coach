@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../context/AuthContext.jsx'
 import Wordmark from './Wordmark.jsx'
 
@@ -33,7 +33,13 @@ export default function AppLayout() {
             <NavLink to="/history" className={linkClasses}>History</NavLink>
           </nav>
           <div className="ml-auto flex items-center gap-3">
-            <span className="hidden text-sm text-muted md:inline">{user.name}</span>
+            <Link
+              to="/settings"
+              className="hidden text-sm text-muted underline-offset-4 hover:text-ink hover:underline md:inline"
+              title="Account settings"
+            >
+              {user.name}
+            </Link>
             {/* A plain text link on phones (saves space), a bordered button on wider screens */}
             <button
               onClick={handleLogout}

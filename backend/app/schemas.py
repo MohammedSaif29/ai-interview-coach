@@ -20,6 +20,13 @@ from pydantic import (
 from app.question_bank import role_label
 
 
+def check_password_length(value: str) -> str:
+    # bcrypt (our hashing algorithm) only reads the first 72 bytes.
+    if len(value.encode("utf-8")) > 72:
+        raise ValueError("Password is too long (max 72 bytes)")
+    return value
+
+
 class UserCreate(BaseModel):
     """What the frontend sends to sign up."""
     name: str = Field(min_length=1, max_length=100)
@@ -29,10 +36,27 @@ class UserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def password_fits_bcrypt(cls, value: str) -> str:
-        # bcrypt (our hashing algorithm) only reads the first 72 bytes.
-        if len(value.encode("utf-8")) > 72:
-            raise ValueError("Password is too long (max 72 bytes)")
-        return value
+        return check_password_length(value)
+
+
+class UserUpdate(BaseModel):
+    """Changing your name on the Settings page."""
+    name: str = Field(min_length=1, max_length=100)
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_fits_bcrypt(cls, value: str) -> str:
+        return check_password_length(value)
+
+
+class AccountDelete(BaseModel):
+    """Deleting an account needs the password, so a borrowed laptop can't do it."""
+    password: str
 
 
 class UserLogin(BaseModel):

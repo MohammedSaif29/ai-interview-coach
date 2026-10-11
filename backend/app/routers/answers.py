@@ -8,6 +8,7 @@ from app.database import get_db
 from app.deps import get_current_user
 from app.models import PracticeSession, User
 from app.question_bank import is_known_question, role_label
+from app.rate_limit import evaluations, transcriptions
 from app.schemas import EvaluateRequest, Evaluation, TranscriptOut
 from app.services.evaluation import EvaluationError, evaluate_answer
 from app.services.speech_analysis import analyse_speech
@@ -35,6 +36,7 @@ async def transcribe_answer(
     user: User = Depends(get_current_user),  # login required: stops strangers using our API quota
     db: Session = Depends(get_db),
 ):
+    transcriptions.hit(f"user:{user.id}")  # max 10 per minute per user (protects our AI quota)
     if not is_known_question(role, question):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That question isn't in our question bank.")
 
@@ -95,6 +97,8 @@ async def evaluate(data: EvaluateRequest, user: User = Depends(get_current_user)
     # Already scored? Return the saved feedback instead of paying for another AI call
     if session.feedback:
         return session.feedback
+
+    evaluations.hit(f"user:{user.id}")  # max 10 per minute per user (protects our AI quota)
 
     if len(session.transcript.split()) < 5:
         raise HTTPException(

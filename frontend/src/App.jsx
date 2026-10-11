@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard.jsx'
 import Practice from './pages/Practice.jsx'
 import History from './pages/History.jsx'
 import SessionDetail from './pages/SessionDetail.jsx'
+import Settings from './pages/Settings.jsx'
 import NotFound from './pages/NotFound.jsx'
 
 // ROUTES: which page shows for which URL.
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/history" element={<History />} />
         {/* :id is a URL parameter, e.g. /history/12 -> id = "12" */}
         <Route path="/history/:id" element={<SessionDetail />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
 
       {/* Anything else */}

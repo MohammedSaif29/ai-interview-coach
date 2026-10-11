@@ -145,6 +145,9 @@ export default function Dashboard() {
               <dd className="font-medium">{memberSince}</dd>
             </div>
           </dl>
+          <Link to="/settings" className="mt-4 inline-block text-sm font-semibold text-brand underline-offset-4 hover:underline">
+            Account settings
+          </Link>
         </section>
       </aside>
     </div>

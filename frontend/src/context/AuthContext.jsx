@@ -41,7 +41,8 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, checking, login, signup, logout }}>
+    // setUser is shared too, so the Settings page can update the name everywhere at once
+    <AuthContext.Provider value={{ user, checking, login, signup, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   )

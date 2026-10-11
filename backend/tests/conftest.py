@@ -17,6 +17,7 @@ import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.main import app  # noqa: E402
+from app.rate_limit import reset_all_limiters  # noqa: E402
 from app.schemas import Evaluation  # noqa: E402
 
 TRANSCRIPT = "So, um, I built an interview practice app with React and FastAPI for my final year project."
@@ -38,6 +39,13 @@ def _timed_words(text):
 
 
 @pytest.fixture(autouse=True)
+def fresh_rate_limits():
+    """Every test starts with empty rate-limit counters."""
+    reset_all_limiters()
+    yield
+
+
+@pytest.fixture(autouse=True)
 def fake_ai(monkeypatch):
     """Replaces the real Groq calls with fakes, and counts how often they're used."""
     calls = {"transcribe": 0, "evaluate": 0}
@@ -55,13 +63,18 @@ def fake_ai(monkeypatch):
     return calls
 
 
+PASSWORD = "supersecret1"
+
+
 @pytest.fixture
 def new_user():
-    """Call new_user() to get a logged-in browser for a brand-new account."""
+    """Call new_user() to get a logged-in browser for a brand-new account.
+    The account's email is available as client.email."""
     def make():
         client = TestClient(app)
         email = f"{uuid.uuid4().hex[:10]}@test.com"
-        response = client.post("/api/auth/signup", json={"name": "Test", "email": email, "password": "supersecret1"})
+        response = client.post("/api/auth/signup", json={"name": "Test", "email": email, "password": PASSWORD})
         assert response.status_code == 201
+        client.email = email
         return client
     return make
