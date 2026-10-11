@@ -3,23 +3,21 @@ import { api } from '../lib/api.js'
 import { MAX_SECONDS, useRecorder } from '../hooks/useRecorder.js'
 import { Button } from './ui/Button.jsx'
 import { Alert } from './ui/Alert.jsx'
+import { formatTime } from '../lib/format.js'
+import DeliveryReport from './DeliveryReport.jsx'
 import LiveWaveform from './LiveWaveform.jsx'
 import Waveform from './Waveform.jsx'
-
-// 75 -> "1:15"
-function formatTime(totalSeconds) {
-  const s = Math.max(0, Math.round(totalSeconds))
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-}
 
 /*
   The recording flow, one step at a time:
   idle -> recording -> recorded (listen back) -> transcribing -> transcript
 
-  onTranscript(text): called when a transcript is ready, so the page can ask for AI feedback
+  question, role: what's being answered (saved with the session)
+  onTranscript(sessionId): called once the answer is transcribed and saved,
+    so the page can ask for AI feedback on that session
   onReset(): called when the user throws the answer away and records again
 */
-export default function AnswerRecorder({ onTranscript, onReset }) {
+export default function AnswerRecorder({ question, role, onTranscript, onReset }) {
   const recorder = useRecorder()
   const [transcribing, setTranscribing] = useState(false)
   const [result, setResult] = useState(null)
@@ -31,13 +29,15 @@ export default function AnswerRecorder({ onTranscript, onReset }) {
     // FormData: how browsers send files to a server
     const form = new FormData()
     form.append('audio', blob, `answer.${extension}`)
+    form.append('role', role)
+    form.append('question', question)
 
     setTranscribing(true)
     setUploadError('')
     try {
       const transcript = await api('/answers/transcribe', { method: 'POST', body: form })
       setResult(transcript)
-      if (transcript.transcript) onTranscript?.(transcript.transcript)
+      if (transcript.session_id) onTranscript?.(transcript.session_id)
     } catch (err) {
       setUploadError(err.message)
     } finally {
@@ -54,55 +54,9 @@ export default function AnswerRecorder({ onTranscript, onReset }) {
 
   // ----- Step 5: transcript + speech analysis are ready -----
   if (result) {
-    const analysis = result.analysis
-    const pauses = analysis.hesitation_count + analysis.long_pause_count
     return (
       <div className="animate-fade-up">
-        <p className="text-sm text-white/50">Your answer, transcribed</p>
-        {analysis.tokens.length > 0 ? (
-          <>
-            <AnnotatedTranscript tokens={analysis.tokens} />
-            {(analysis.filler_count > 0 || pauses > 0) && (
-              <p className="mt-2 text-xs text-white/40">
-                Filler words are underlined. Pauses are marked where they happened.
-              </p>
-            )}
-          </>
-        ) : (
-          <p className="mt-2 text-white/60">
-            No speech was detected. Record again, a little closer to your microphone.
-          </p>
-        )}
-
-        <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 border-t border-white/10 pt-5">
-          <Stat value={formatTime(analysis.speaking_seconds)} label="speaking time" />
-          <Stat value={analysis.words_per_minute} label={`words per minute, ${analysis.pace}`} />
-          <Stat
-            value={analysis.filler_count}
-            label={analysis.filler_count === 1 ? 'filler word' : 'filler words'}
-            highlight={analysis.filler_count > 0}
-          />
-          <Stat value={pauses} label={pauses === 1 ? 'pause' : 'pauses'} />
-        </div>
-
-        <div className="mt-5 border-t border-white/10 pt-5">
-          <div className="flex items-baseline gap-3">
-            <p className="font-serif text-4xl leading-none" aria-label={`Delivery score ${analysis.delivery_score} out of 10`}>
-              {analysis.delivery_score}
-              <span className="ml-1 font-sans text-base text-white/50">/10</span>
-            </p>
-            <p className="text-sm text-white/60">Delivery score</p>
-          </div>
-          <ul className="mt-4 space-y-2">
-            {analysis.tips.map((tip) => (
-              <li key={tip} className="flex gap-3 text-[15px] leading-relaxed text-white/80">
-                <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-glow" aria-hidden="true" />
-                {tip}
-              </li>
-            ))}
-          </ul>
-        </div>
-
+        <DeliveryReport analysis={result.analysis} />
         <Button variant="outlineLight" onClick={recordAgain} className="mt-7">
           Record again
         </Button>
@@ -188,36 +142,3 @@ export default function AnswerRecorder({ onTranscript, onReset }) {
   )
 }
 
-function Stat({ value, label, highlight = false }) {
-  return (
-    <p className="text-sm text-white/60">
-      <span className={`mr-1 text-lg font-semibold ${highlight ? 'text-mark-light' : 'text-white'}`}>{value}</span>
-      {label}
-    </p>
-  )
-}
-
-// The transcript with filler words underlined and pauses marked where they happened
-function AnnotatedTranscript({ tokens }) {
-  return (
-    <p className="mt-2 text-[17px] leading-[1.8] text-white/90 [--filler:var(--color-mark-light)]">
-      {tokens.map((token, i) => (
-        <span key={i}>
-          {token.filler ? <span className="filler">{token.text}</span> : token.text}{' '}
-          {token.pause_kind && (
-            <>
-              <span
-                className={`mx-0.5 inline-block rounded px-1.5 align-[1px] text-xs font-medium ${
-                  token.pause_kind === 'long' ? 'bg-mark-light/15 text-mark-light' : 'bg-white/10 text-white/60'
-                }`}
-                title={token.pause_kind === 'long' ? 'Long pause' : 'Hesitation'}
-              >
-                pause {token.pause_seconds}s
-              </span>{' '}
-            </>
-          )}
-        </span>
-      ))}
-    </p>
-  )
-}

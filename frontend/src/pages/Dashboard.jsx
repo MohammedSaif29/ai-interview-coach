@@ -1,8 +1,16 @@
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { Link } from 'react-router'
 import { useAuth } from '../context/AuthContext.jsx'
+import { api } from '../lib/api.js'
 import { ButtonLink } from '../components/ui/Button.jsx'
 import TipCard from '../components/TipCard.jsx'
 import GlowBackdrop from '../components/GlowBackdrop.jsx'
 import Waveform from '../components/Waveform.jsx'
+import SessionRow from '../components/SessionRow.jsx'
+
+// CODE SPLITTING: the chart library is big, so it's downloaded only when the
+// dashboard actually needs charts. Login and landing pages stay fast.
+const ProgressCharts = lazy(() => import('../components/ProgressCharts.jsx'))
 
 function greeting() {
   const hour = new Date().getHours()
@@ -21,9 +29,23 @@ export default function Dashboard() {
     year: 'numeric',
   })
 
+  const [stats, setStats] = useState(null)
+  const [recent, setRecent] = useState([])
+  const [loadError, setLoadError] = useState(false)
+
+  useEffect(() => {
+    // Promise.all: ask for both at the same time instead of one after the other
+    Promise.all([api('/sessions/stats'), api('/sessions?limit=5')])
+      .then(([statsData, recentData]) => {
+        setStats(statsData)
+        setRecent(recentData)
+      })
+      .catch(() => setLoadError(true))
+  }, [])
+
   return (
     <div className="grid gap-10 lg:grid-cols-[1fr_19rem]">
-      <div className="space-y-10">
+      <div className="min-w-0 space-y-10">
         <header>
           <h1 className="font-serif text-4xl tracking-tight sm:text-5xl">
             {greeting()}, {displayName}
@@ -45,16 +67,64 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <section>
-          <h2 className="text-lg font-semibold">Your sessions</h2>
-          {/* Empty state: honest about having no data yet, and says what will appear */}
-          <div className="mt-3 rounded-2xl border border-dashed border-ink/20 px-6 py-12 text-center">
-            <p className="font-medium">No sessions yet</p>
-            <p className="mx-auto mt-1 max-w-sm text-sm leading-relaxed text-muted">
-              After your first practice session, your scores and progress will show up here.
-            </p>
+        {loadError && (
+          <p className="text-sm text-muted">Your progress couldn't be loaded. Refresh the page to try again.</p>
+        )}
+
+        {!stats && !loadError && (
+          <div className="space-y-4" aria-hidden="true">
+            <div className="h-24 animate-pulse rounded-2xl bg-line/60" />
+            <div className="h-72 animate-pulse rounded-2xl bg-line/60" />
           </div>
-        </section>
+        )}
+
+        {stats && stats.total_sessions === 0 && (
+          <section>
+            <h2 className="text-lg font-semibold">Your sessions</h2>
+            {/* Empty state: honest about having no data yet, and says what will appear */}
+            <div className="mt-3 rounded-2xl border border-dashed border-ink/20 px-6 py-12 text-center">
+              <p className="font-medium">No sessions yet</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm leading-relaxed text-muted">
+                After your first practice session, your scores and progress will show up here.
+              </p>
+            </div>
+          </section>
+        )}
+
+        {stats && stats.total_sessions > 0 && (
+          <>
+            <dl className="grid grid-cols-3 divide-x divide-line rounded-2xl border border-line bg-white">
+              <StatTile label="Sessions" value={stats.total_sessions} />
+              <StatTile label="Average content score" value={stats.average_content} outOf={10} />
+              <StatTile label="Average delivery score" value={stats.average_delivery} outOf={10} />
+            </dl>
+
+            {stats.trend.length >= 2 ? (
+              <Suspense fallback={<div className="h-[34rem] animate-pulse rounded-2xl bg-line/60" aria-hidden="true" />}>
+                <ProgressCharts trend={stats.trend} />
+              </Suspense>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-ink/20 px-6 py-8 text-center">
+                <p className="font-medium">Your progress chart starts after two sessions</p>
+                <p className="mt-1 text-sm text-muted">Record one more answer to see how you're improving.</p>
+              </div>
+            )}
+
+            <section>
+              <div className="flex items-baseline justify-between gap-4">
+                <h2 className="text-lg font-semibold">Recent sessions</h2>
+                <Link to="/history" className="text-sm font-semibold text-brand underline-offset-4 hover:underline">
+                  See all
+                </Link>
+              </div>
+              <div className="mt-3 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
+                {recent.map((session) => (
+                  <SessionRow key={session.id} session={session} />
+                ))}
+              </div>
+            </section>
+          </>
+        )}
       </div>
 
       <aside className="space-y-6">
@@ -77,6 +147,18 @@ export default function Dashboard() {
           </dl>
         </section>
       </aside>
+    </div>
+  )
+}
+
+function StatTile({ label, value, outOf }) {
+  return (
+    <div className="p-4 sm:p-5">
+      <dt className="text-xs text-muted sm:text-sm">{label}</dt>
+      <dd className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+        {value ?? '–'}
+        {outOf && value != null && <span className="text-sm font-normal text-muted">/{outOf}</span>}
+      </dd>
     </div>
   )
 }

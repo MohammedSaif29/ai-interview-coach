@@ -6,8 +6,11 @@ import Waveform from './Waveform.jsx'
   Shows the AI interviewer's feedback:
   overall score + verdict, three score bars, what worked / what to improve,
   and a stronger version of the answer.
+
+  onNext (optional): shows a "Try another question" button
+  children (optional): extra content at the bottom, e.g. a "saved" note
 */
-export default function FeedbackReport({ feedback, onNext }) {
+export default function FeedbackReport({ feedback, onNext, children }) {
   const criteria = [
     { label: 'Relevance', ...feedback.relevance },
     { label: 'Structure', ...feedback.structure },
@@ -23,9 +26,9 @@ export default function FeedbackReport({ feedback, onNext }) {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-8">
         <div className="shrink-0">
-          <p className="font-serif text-7xl leading-none tracking-tight" aria-label={`Content score ${feedback.overall} out of 10`}>
+          <p className="text-6xl font-semibold leading-none tracking-tight" aria-label={`Content score ${feedback.overall} out of 10`}>
             {feedback.overall}
-            <span className="ml-1 font-sans text-xl text-muted">/10</span>
+            <span className="ml-1 text-xl font-normal text-muted">/10</span>
           </p>
           <p className="mt-2 text-sm text-muted">Content score</p>
         </div>
@@ -58,7 +61,12 @@ export default function FeedbackReport({ feedback, onNext }) {
         </blockquote>
       </div>
 
-      <Button onClick={onNext} className="mt-10">Try another question</Button>
+      {(onNext || children) && (
+        <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+          {onNext && <Button onClick={onNext}>Try another question</Button>}
+          {children}
+        </div>
+      )}
     </section>
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router'
 import { api } from '../lib/api.js'
 import { useQuestion } from '../hooks/useQuestion.js'
 import { Button } from '../components/ui/Button.jsx'
@@ -29,7 +30,7 @@ export default function Practice() {
   const [feedback, setFeedback] = useState(null)
   const [scoring, setScoring] = useState(false)
   const [feedbackError, setFeedbackError] = useState('')
-  const lastTranscript = useRef('')
+  const [sessionId, setSessionId] = useState(null) // the saved session being scored
   // Each scoring request gets a number. If the user moves on before the answer
   // comes back, the old (now outdated) response is ignored.
   const requestId = useRef(0)
@@ -49,11 +50,13 @@ export default function Practice() {
     setFeedback(null)
     setFeedbackError('')
     setScoring(false)
+    setSessionId(null)
   }
 
-  async function scoreAnswer(transcript) {
+  // The answer is already saved by the backend. We only send WHICH session to score.
+  async function scoreAnswer(savedSessionId) {
     const id = ++requestId.current
-    lastTranscript.current = transcript
+    setSessionId(savedSessionId)
     setFeedback(null)
     setFeedbackError('')
     setScoring(true)
@@ -62,7 +65,7 @@ export default function Practice() {
     try {
       const result = await api('/answers/evaluate', {
         method: 'POST',
-        body: { question, role, transcript },
+        body: { session_id: savedSessionId },
       })
       if (id === requestId.current) setFeedback(result)
     } catch (err) {
@@ -146,7 +149,15 @@ export default function Practice() {
 
           <div className="mt-8 border-t border-white/10 pt-8">
             {/* key: a new question or role gives a fresh recorder (and turns the old mic off) */}
-            <AnswerRecorder key={`${role}-${number}`} onTranscript={scoreAnswer} onReset={clearFeedback} />
+            {question && (
+              <AnswerRecorder
+                key={`${role}-${number}`}
+                question={question}
+                role={role}
+                onTranscript={scoreAnswer}
+                onReset={clearFeedback}
+              />
+            )}
           </div>
         </div>
       </section>
@@ -159,13 +170,24 @@ export default function Practice() {
             <Alert>{feedbackError.message}</Alert>
             {/* 400 = a problem with the answer itself (e.g. too short), so retrying won't help */}
             {feedbackError.canRetry && (
-              <Button variant="secondary" className="mt-4" onClick={() => scoreAnswer(lastTranscript.current)}>
+              <Button variant="secondary" className="mt-4" onClick={() => scoreAnswer(sessionId)}>
                 Try scoring again
               </Button>
             )}
           </div>
         )}
-        {feedback && <div className="mt-6"><FeedbackReport feedback={feedback} onNext={nextQuestion} /></div>}
+        {feedback && (
+          <div className="mt-6">
+            <FeedbackReport feedback={feedback} onNext={nextQuestion}>
+              <p className="text-sm text-muted">
+                Saved to your{' '}
+                <Link to={`/history/${sessionId}`} className="font-semibold text-brand underline-offset-4 hover:underline">
+                  history
+                </Link>
+              </p>
+            </FeedbackReport>
+          </div>
+        )}
       </div>
 
       <TipCard className="mt-6" />

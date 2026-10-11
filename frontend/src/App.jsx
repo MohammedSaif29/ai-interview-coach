@@ -6,6 +6,8 @@ import Login from './pages/Login.jsx'
 import Signup from './pages/Signup.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Practice from './pages/Practice.jsx'
+import History from './pages/History.jsx'
+import SessionDetail from './pages/SessionDetail.jsx'
 import NotFound from './pages/NotFound.jsx'
 
 // ROUTES: which page shows for which URL.
@@ -23,6 +25,9 @@ export default function App() {
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/practice" element={<Practice />} />
+        <Route path="/history" element={<History />} />
+        {/* :id is a URL parameter, e.g. /history/12 -> id = "12" */}
+        <Route path="/history/:id" element={<SessionDetail />} />
       </Route>
 
       {/* Anything else */}

@@ -16,6 +16,7 @@ const variants = {
     'bg-glow text-night shadow-[0_0_24px_-6px_var(--color-glow)] ' +
     'hover:shadow-[0_0_36px_-4px_var(--color-glow)] hover:brightness-105',
   outlineLight: 'border border-white/20 text-white hover:border-white/50 hover:bg-white/5',
+  danger: 'bg-mark text-white hover:brightness-95',
 }
 
 const sizes = {

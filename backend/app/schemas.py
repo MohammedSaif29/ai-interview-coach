@@ -3,10 +3,21 @@
 Pydantic checks every request against these. Bad input is rejected with a
 422 error before it ever reaches our code.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    computed_field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
+
+from app.question_bank import role_label
 
 
 class UserCreate(BaseModel):
@@ -30,6 +41,12 @@ class UserLogin(BaseModel):
     password: str
 
 
+def as_utc(value: datetime) -> datetime:
+    """SQLite forgets time zones, so a saved UTC time comes back "naive".
+    Mark it as UTC again, so browsers convert it to the user's local time correctly."""
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+
+
 class UserOut(BaseModel):
     """What we send back. Notice: NO password field, so it can never leak."""
     model_config = ConfigDict(from_attributes=True)  # lets us return a User model directly
@@ -38,6 +55,10 @@ class UserOut(BaseModel):
     name: str
     email: EmailStr
     created_at: datetime
+
+    @field_serializer("created_at")
+    def created_at_utc(self, value: datetime) -> datetime:
+        return as_utc(value)
 
 
 class TranscriptWord(BaseModel):
@@ -77,6 +98,7 @@ class SpeechAnalysis(BaseModel):
 
 class TranscriptOut(BaseModel):
     """What the transcribe endpoint sends back."""
+    session_id: int | None  # the saved session (None if no speech was detected)
     transcript: str
     duration_seconds: float
     words: list[TranscriptWord]
@@ -86,10 +108,9 @@ class TranscriptOut(BaseModel):
 # ---------- AI evaluation ----------
 
 class EvaluateRequest(BaseModel):
-    """What the frontend sends to get feedback on an answer."""
-    question: str = Field(min_length=1, max_length=300)
-    role: str = Field(default="hr", max_length=20)
-    transcript: str = Field(min_length=1, max_length=8000)
+    """What the frontend sends to get feedback: just WHICH saved session to score.
+    The question and transcript are read from the database, so they can't be faked."""
+    session_id: int
 
 
 def _clamp_score(value: int) -> int:
@@ -138,3 +159,57 @@ class Evaluation(BaseModel):
     @classmethod
     def at_most_three(cls, items: list[str]) -> list[str]:
         return [item.strip() for item in items if item.strip()][:3]
+
+
+# ---------- Saved sessions ----------
+
+class SessionSummary(BaseModel):
+    """One row in the history list."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: str
+    question: str
+    content_score: int | None
+    delivery_score: int
+    words_per_minute: int
+    filler_count: int
+    created_at: datetime
+
+    @computed_field
+    @property
+    def role_label(self) -> str:
+        return role_label(self.role)
+
+    @field_serializer("created_at")
+    def created_at_utc(self, value: datetime) -> datetime:
+        return as_utc(value)
+
+
+class SessionDetail(SessionSummary):
+    """Everything about one session, for its own page."""
+    transcript: str
+    duration_seconds: float
+    analysis: SpeechAnalysis
+    feedback: Evaluation | None
+
+
+class TrendPoint(BaseModel):
+    """One session's numbers, for the progress charts."""
+    id: int
+    created_at: datetime
+    content_score: int | None
+    delivery_score: int
+    fillers_per_minute: float
+    words_per_minute: int
+
+    @field_serializer("created_at")
+    def created_at_utc(self, value: datetime) -> datetime:
+        return as_utc(value)
+
+
+class StatsOut(BaseModel):
+    total_sessions: int
+    average_content: float | None
+    average_delivery: float | None
+    trend: list[TrendPoint]  # oldest first, last 20 sessions
