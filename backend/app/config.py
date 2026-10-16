@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     stt_model: str = "whisper-large-v3-turbo"
     llm_model: str = "openai/gpt-oss-120b"  # scores answers and writes feedback
+    # The coach uses a smaller, faster model. On Groq's free plan each model has its
+    # own limits, so chatting doesn't use up the quota that answer scoring needs.
+    chat_model: str = "openai/gpt-oss-20b"
 
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env")
 

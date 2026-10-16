@@ -7,8 +7,9 @@ from app.config import settings
 from app.database import get_db
 from app.deps import get_current_user
 from app.models import PracticeSession, User
-from app.question_bank import is_known_question, role_label
+from app.question_bank import RESUME_ROLE, interview_description, is_known_question
 from app.rate_limit import evaluations, transcriptions
+from app.routers.resumes import latest_resume
 from app.schemas import EvaluateRequest, Evaluation, TranscriptOut
 from app.services.evaluation import EvaluationError, evaluate_answer
 from app.services.speech_analysis import analyse_speech
@@ -37,7 +38,12 @@ async def transcribe_answer(
     db: Session = Depends(get_db),
 ):
     transcriptions.hit(f"user:{user.id}")  # max 10 per minute per user (protects our AI quota)
-    if not is_known_question(role, question):
+    if role == RESUME_ROLE:
+        # Resume questions are personal: they must come from THIS user's latest resume review
+        resume = latest_resume(db, user.id)
+        if resume is None or question not in (resume.review.get("interview_questions") or []):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "That question isn't from your latest resume review.")
+    elif not is_known_question(role, question):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That question isn't in our question bank.")
 
     # "audio/webm;codecs=opus" -> "audio/webm"
@@ -48,7 +54,7 @@ async def transcribe_answer(
     # Read at most MAX_BYTES + 1, so a huge upload can't fill the server's memory
     data = await audio.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
-        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "The recording is too large (max 10 MB).")
+        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "The recording is too large (max 10 MB).")
     if len(data) < MIN_BYTES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "The recording is empty or too short. Record your answer again.")
 
@@ -109,7 +115,7 @@ async def evaluate(data: EvaluateRequest, user: User = Depends(get_current_user)
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, NOT_SET_UP)
 
     try:
-        feedback = await evaluate_answer(session.question, session.transcript, role_label(session.role))
+        feedback = await evaluate_answer(session.question, session.transcript, interview_description(session.role))
     except EvaluationError as error:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(error))
 

@@ -23,7 +23,7 @@ class EvaluationError(Exception):
     """Raised when scoring fails. The message is safe to show users."""
 
 
-SYSTEM_PROMPT = """You are an experienced interviewer and interview coach for {role} roles.
+SYSTEM_PROMPT = """You are an experienced interviewer and interview coach. The interview is for {role}.
 You are helping a university student practise for job interviews.
 
 You will receive an interview question and the student's spoken answer. The answer was

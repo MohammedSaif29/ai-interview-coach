@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { api } from '../lib/api.js'
 import { useQuestion } from '../hooks/useQuestion.js'
 import { Button } from '../components/ui/Button.jsx'
@@ -10,6 +10,8 @@ import GlowBackdrop from '../components/GlowBackdrop.jsx'
 import TipCard from '../components/TipCard.jsx'
 
 const DEFAULT_ROLES = [{ id: 'hr', label: 'HR round' }]
+
+const RESUME_ROLE = { id: 'resume', label: 'From my resume' }
 
 // Remember the last interview type in this browser (a small convenience, so it's
 // fine if storage is unavailable, e.g. in private browsing)
@@ -22,8 +24,10 @@ function savedRole() {
 }
 
 export default function Practice() {
+  const [searchParams] = useSearchParams()
   const [roles, setRoles] = useState(DEFAULT_ROLES)
-  const [role, setRole] = useState(savedRole)
+  // A link like /practice?role=resume picks the interview type; otherwise use the last one
+  const [role, setRole] = useState(() => searchParams.get('role') || savedRole())
   const { question, loading, error, next } = useQuestion(role)
   const [number, setNumber] = useState(1)
 
@@ -37,10 +41,12 @@ export default function Practice() {
   const feedbackRef = useRef(null)
 
   useEffect(() => {
-    api('/roles')
-      .then((list) => {
-        setRoles(list)
-        if (!list.some((r) => r.id === role)) setRole('hr')
+    // The normal roles, plus "From my resume" if the user has had a resume reviewed
+    Promise.all([api('/roles'), api('/resumes').catch(() => [])])
+      .then(([list, resumes]) => {
+        const all = resumes.length > 0 ? [...list, RESUME_ROLE] : list
+        setRoles(all)
+        if (!all.some((r) => r.id === role)) setRole('hr')
       })
       .catch(() => {}) // keep the default role if this fails
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -163,7 +169,7 @@ export default function Practice() {
       </section>
 
       {/* Feedback appears here once the transcript is ready */}
-      <div ref={feedbackRef} className="scroll-mt-6">
+      <div ref={feedbackRef} className="scroll-mt-24">
         {scoring && <div className="mt-6"><FeedbackLoading /></div>}
         {feedbackError && (
           <div className="mt-6 rounded-2xl border border-line bg-white p-6 sm:p-8">

@@ -62,3 +62,39 @@ function readableError(data, status) {
 function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
+
+/*
+  STREAMING: like api(), but for replies that arrive piece by piece (the coach chat).
+  onPiece(text) is called each time a few more words arrive.
+*/
+export async function streamPost(path, body, onPiece) {
+  let response
+  try {
+    response = await fetch(`/api${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch {
+    throw new ApiError("Can't reach the server. Make sure the backend is running on port 8000.", 0)
+  }
+
+  if (!response.ok) {
+    let data = null
+    try {
+      data = await response.json()
+    } catch {
+      // not JSON
+    }
+    throw new ApiError(readableError(data, response.status), response.status)
+  }
+
+  // Read the body as a stream of bytes and decode it into text as it arrives
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    onPiece(decoder.decode(value, { stream: true }))
+  }
+}

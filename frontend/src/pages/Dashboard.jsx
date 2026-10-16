@@ -44,7 +44,7 @@ export default function Dashboard() {
   }, [])
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[1fr_19rem]">
+    <div className="grid gap-10 xl:grid-cols-[1fr_19rem]">
       <div className="min-w-0 space-y-10">
         <header>
           <h1 className="font-serif text-4xl tracking-tight sm:text-5xl">
@@ -128,6 +128,21 @@ export default function Dashboard() {
       </div>
 
       <aside className="space-y-6">
+        <section className="relative isolate overflow-hidden rounded-2xl bg-night p-6 text-white">
+          <GlowBackdrop />
+          <div className="relative">
+            <h2 className="text-sm font-semibold text-glow">Your coach</h2>
+            <p className="mt-2 leading-relaxed text-white/80">
+              Not sure what to practise next? Your coach can see your scores and suggest a plan.
+            </p>
+            <Link
+              to={`/coach?ask=${encodeURIComponent('What should I work on next?')}`}
+              className="mt-4 inline-block text-sm font-semibold text-glow underline-offset-4 hover:underline"
+            >
+              Ask your coach
+            </Link>
+          </div>
+        </section>
         <TipCard />
         <section className="rounded-2xl border border-line bg-white p-6">
           <h2 className="text-sm font-semibold text-brand">Your account</h2>

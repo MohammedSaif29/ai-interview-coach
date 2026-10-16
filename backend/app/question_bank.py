@@ -69,10 +69,37 @@ TIPS = [
 ]
 
 
+# A special "role": questions generated from the student's own resume (see resumes.py)
+RESUME_ROLE = "resume"
+RESUME_ROLE_LABEL = "From my resume"
+
+
 def role_label(role: str) -> str:
+    if role == RESUME_ROLE:
+        return RESUME_ROLE_LABEL
     return ROLES[role]["label"] if role in ROLES else ROLES["hr"]["label"]
+
+
+def interview_description(role: str) -> str:
+    """How the AI interviewer should think of the interview it's judging."""
+    if role == RESUME_ROLE:
+        return "a role matching the student's resume (the questions are about their own projects and experience)"
+    return f"{role_label(role)} roles"
 
 
 def is_known_question(role: str, question: str) -> bool:
     """True only for questions we actually asked. Stops anyone saving made-up data."""
     return role in ROLES and question in ROLES[role]["questions"]
+
+
+# Roles a resume can be reviewed for
+RESUME_TARGETS = {
+    "any": "Any tech role",
+    "software": "Software developer",
+    "web": "Web developer",
+    "data": "Data analyst",
+}
+
+
+def target_label(target: str) -> str:
+    return RESUME_TARGETS.get(target, RESUME_TARGETS["any"])

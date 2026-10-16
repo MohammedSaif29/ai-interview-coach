@@ -1,0 +1,20 @@
+# systemd service: keeps the backend running, starts it on boot,
+# and restarts it automatically if it ever crashes.
+[Unit]
+Description=Interview Bot API (FastAPI + uvicorn)
+After=network.target
+
+[Service]
+User=__USER__
+WorkingDirectory=__APP_DIR__/backend
+# --proxy-headers: trust Caddy's X-Forwarded-For header, so rate limits see each
+# visitor's real IP instead of Caddy's 127.0.0.1.
+# One worker on purpose: our rate limiter keeps its counts in memory.
+ExecStart=__APP_DIR__/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips 127.0.0.1
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

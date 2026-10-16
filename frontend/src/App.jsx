@@ -9,6 +9,11 @@ import Practice from './pages/Practice.jsx'
 import History from './pages/History.jsx'
 import SessionDetail from './pages/SessionDetail.jsx'
 import Settings from './pages/Settings.jsx'
+import Coach from './pages/Coach.jsx'
+import Resume from './pages/Resume.jsx'
+import Companies from './pages/Companies.jsx'
+import CompanyDetail from './pages/CompanyDetail.jsx'
+import MockTest from './pages/MockTest.jsx'
 import NotFound from './pages/NotFound.jsx'
 
 // ROUTES: which page shows for which URL.
@@ -30,6 +35,11 @@ export default function App() {
         {/* :id is a URL parameter, e.g. /history/12 -> id = "12" */}
         <Route path="/history/:id" element={<SessionDetail />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/coach" element={<Coach />} />
+        <Route path="/resume" element={<Resume />} />
+        <Route path="/companies" element={<Companies />} />
+        <Route path="/companies/:companyId" element={<CompanyDetail />} />
+        <Route path="/companies/:companyId/tests/:testId" element={<MockTest />} />
       </Route>
 
       {/* Anything else */}

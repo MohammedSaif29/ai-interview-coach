@@ -1,0 +1,31 @@
+# Caddy: the web server in front of everything.
+# 📘 It gets a free HTTPS certificate from Let's Encrypt and renews it automatically.
+# __DOMAIN__ is replaced by setup.sh with your real domain.
+
+__DOMAIN__ {
+	encode zstd gzip
+
+	# API requests go to FastAPI (uvicorn), which only listens on this machine
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	# Everything else is the built React app.
+	# Paths like /history/3 don't exist as files, so they get index.html
+	# and React Router shows the right page.
+	handle {
+		root * /var/www/interview-bot
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Vite puts a hash in asset filenames, so browsers can cache them forever
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	header {
+		# HSTS: browsers will only ever use HTTPS for this site
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}

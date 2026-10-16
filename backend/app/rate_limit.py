@@ -82,3 +82,9 @@ sensitive_changes = RateLimiter(max_requests=5, per_seconds=900)
 # AI calls for one user: protects our free Groq quota
 transcriptions = RateLimiter(max_requests=10, per_seconds=60)
 evaluations = RateLimiter(max_requests=10, per_seconds=60)
+# Coach chat messages for one user
+coach_messages = RateLimiter(max_requests=20, per_seconds=60)
+# Resume reviews for one user (each one is a large AI request)
+resume_reviews = RateLimiter(max_requests=5, per_seconds=600)
+# Mock tests started by one user (stops someone creating thousands of attempts)
+test_starts = RateLimiter(max_requests=10, per_seconds=600)

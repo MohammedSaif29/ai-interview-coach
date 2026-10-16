@@ -1,7 +1,7 @@
 """Database tables. Each class = one table, each attribute = one column."""
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -25,6 +25,11 @@ class User(Base):
     sessions: Mapped[list["PracticeSession"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    coach_messages: Mapped[list["CoachMessage"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    resumes: Mapped[list["Resume"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    test_attempts: Mapped[list["TestAttempt"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class PracticeSession(Base):
@@ -55,3 +60,59 @@ class PracticeSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
 
     user: Mapped[User] = relationship(back_populates="sessions")
+
+
+class CoachMessage(Base):
+    """One message in a user's conversation with the AI coach."""
+    __tablename__ = "coach_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    role: Mapped[str] = mapped_column(String(10))  # "user" or "assistant"
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+
+    user: Mapped[User] = relationship(back_populates="coach_messages")
+
+
+class Resume(Base):
+    """One uploaded resume and its review. We keep the extracted text, never the PDF file."""
+    __tablename__ = "resumes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    filename: Mapped[str] = mapped_column(String(150))
+    target_role: Mapped[str] = mapped_column(String(20))
+    page_count: Mapped[int] = mapped_column(Integer)
+    word_count: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
+    checks: Mapped[list] = mapped_column(JSON)   # the automatic ATS checks
+    review: Mapped[dict] = mapped_column(JSON)   # the AI review
+    score: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+
+    user: Mapped[User] = relationship(back_populates="resumes")
+
+
+class TestAttempt(Base):
+    """One company mock test: which questions were asked, and (after submitting) the result."""
+    __tablename__ = "test_attempts"
+    __test__ = False  # its name starts with "Test", so tell pytest it isn't a test class
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    company_id: Mapped[str] = mapped_column(String(30), index=True)
+    # Each item: {"id": question id, "section": section name, "order": how the 4 options were shuffled}
+    questions: Mapped[list] = mapped_column(JSON)
+    time_limit_seconds: Mapped[int] = mapped_column(Integer)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+
+    # Filled in when the test is submitted
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    answers: Mapped[dict | None] = mapped_column(JSON, nullable=True)   # question id -> option shown (0-3) or null
+    correct_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)  # percentage
+    section_scores: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    auto_submitted: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    user: Mapped[User] = relationship(back_populates="test_attempts")

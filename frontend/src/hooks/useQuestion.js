@@ -17,7 +17,8 @@ export function useQuestion(role = 'hr') {
       // The backend picks randomly, so it can repeat. Try a few times for a new one.
       let data
       for (let attempt = 0; attempt < 3; attempt++) {
-        data = await api(`/question?role=${encodeURIComponent(role)}`)
+        // "resume" questions are personal: they come from the user's own latest resume review
+        data = await api(role === 'resume' ? '/resumes/question' : `/question?role=${encodeURIComponent(role)}`)
         if (data.question !== current.current) break
       }
       current.current = data.question

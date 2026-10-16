@@ -126,7 +126,7 @@ function FeedbackList({ title, items, dotClass, empty }) {
 }
 
 // Highlights "[like this]" placeholders the student should fill in
-function Placeholders({ text }) {
+export function Placeholders({ text }) {
   return text.split(/(\[[^\]]+\])/g).map((part, i) =>
     part.startsWith('[') && part.endsWith(']') ? (
       <span key={i} className="rounded bg-brand-soft px-1 text-brand">{part}</span>

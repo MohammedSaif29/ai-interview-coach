@@ -17,7 +17,7 @@ from pydantic import (
     model_validator,
 )
 
-from app.question_bank import role_label
+from app.question_bank import role_label, target_label
 
 
 def check_password_length(value: str) -> str:
@@ -237,3 +237,127 @@ class StatsOut(BaseModel):
     average_content: float | None
     average_delivery: float | None
     trend: list[TrendPoint]  # oldest first, last 20 sessions
+
+
+# ---------- AI coach ----------
+
+class CoachMessageIn(BaseModel):
+    content: str = Field(min_length=1, max_length=2000)
+
+
+class CoachMessageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: Literal["user", "assistant"]
+    content: str
+    created_at: datetime
+
+    @field_serializer("created_at")
+    def created_at_utc(self, value: datetime) -> datetime:
+        return as_utc(value)
+
+
+# ---------- Resume review ----------
+
+class ResumeSection(BaseModel):
+    name: str
+    status: Literal["strong", "needs_work", "missing"]
+    feedback: str
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def normalise_status(cls, value):
+        # Accept small variations like "Needs work" from the AI
+        cleaned = str(value).strip().lower().replace(" ", "_").replace("-", "_")
+        return cleaned if cleaned in ("strong", "needs_work", "missing") else "needs_work"
+
+
+class ResumeRewrite(BaseModel):
+    original: str
+    improved: str
+
+
+class ResumeReview(BaseModel):
+    """The AI's review. Also used to validate what the AI sends back."""
+    overall_score: int
+    summary: str
+    sections: list[ResumeSection]
+    strengths: list[str]
+    improvements: list[str]
+    rewrites: list[ResumeRewrite]
+    keywords_to_add: list[str]
+    interview_questions: list[str]
+
+    @field_validator("overall_score")
+    @classmethod
+    def score_in_range(cls, value: int) -> int:
+        return max(1, min(100, int(value)))
+
+    @field_validator("strengths", "improvements", "keywords_to_add", "interview_questions")
+    @classmethod
+    def clean_lists(cls, items: list[str], info) -> list[str]:
+        limits = {"strengths": 4, "improvements": 5, "keywords_to_add": 8, "interview_questions": 5}
+        return [item.strip() for item in items if item.strip()][: limits[info.field_name]]
+
+    @field_validator("sections")
+    @classmethod
+    def at_most_eight_sections(cls, items):
+        return items[:8]
+
+    @field_validator("rewrites")
+    @classmethod
+    def at_most_three_rewrites(cls, items):
+        return items[:3]
+
+
+class ResumeCheck(BaseModel):
+    id: str
+    label: str
+    passed: bool
+    tip: str
+
+
+class ResumeSummary(BaseModel):
+    """One row in the list of past reviews."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    filename: str
+    target_role: str
+    score: int
+    created_at: datetime
+
+    @computed_field
+    @property
+    def target_label(self) -> str:
+        return target_label(self.target_role)
+
+    @field_serializer("created_at")
+    def created_at_utc(self, value: datetime) -> datetime:
+        return as_utc(value)
+
+
+class ResumeOut(ResumeSummary):
+    page_count: int
+    word_count: int
+    checks: list[ResumeCheck]
+    review: ResumeReview
+
+
+# ---------- Company mock tests ----------
+
+class TestSubmit(BaseModel):
+    """The student's answers: question id -> the option they picked (0-3, as shown), or null if skipped."""
+    answers: dict[str, int | None] = Field(default_factory=dict, max_length=100)
+    auto_submitted: bool = False  # true when the timer ran out and the page submitted by itself
+
+    @field_validator("answers")
+    @classmethod
+    def valid_choices(cls, answers: dict[str, int | None]) -> dict[str, int | None]:
+        for qid, choice in answers.items():
+            if len(qid) > 30:
+                raise ValueError("Unknown question")
+            if choice is not None and not 0 <= choice <= 3:
+                raise ValueError("Each answer must be one of the four options")
+        return answers

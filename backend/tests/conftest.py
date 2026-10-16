@@ -11,7 +11,7 @@ import uuid
 # Environment variables beat the .env file, so your real key and database are never used.
 os.environ["DATABASE_URL"] = f"sqlite:///{tempfile.mkdtemp()}/test.db"
 os.environ["GROQ_API_KEY"] = "test-key-not-real"
-os.environ.setdefault("SECRET_KEY", "test-secret-key")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-that-is-long-enough-for-hs256")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
